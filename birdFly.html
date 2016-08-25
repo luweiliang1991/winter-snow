@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+    <canvas id="cvs" width="800" height="600" style="border: 1px solid red;"></canvas>
+    <!-- util.js放在最前面，因为后面的js会用到里面的方法-->
+    <script src="./js/util.js"></script>
+    <script src="./js/getImage.js"></script>
+    <script src="./js/sky.js"></script>
+    <script src="./js/land.js"></script>
+    <script src="./js/bird.js"></script>
+    <script src="./js/pipe.js"></script>
+    <script src="./js/text.js"></script>
+    <script>
+        var cvs = document.getElementById('cvs');
+        var ctx = cvs.getContext('2d');
+
+        getImage({
+            sky: './images/sky.png',
+            land: './images/land.png',
+            bird: './images/birds.png',
+            pipeUp: './images/pipeUp.png',
+            pipeDown: './images/pipeDown.png',
+
+            length: 5
+        }, function(imgs){
+            /*----------------------创建天空背景图的实例化对象------------------------*/
+            var sky = new Sky(ctx, imgs.sky);
+            //创建两个天空背景图，为了让天空背景图可以在画布上无缝显示
+            var sky2 = new Sky(ctx, imgs.sky, imgs.sky.width);
+
+            /*------------------------创建小鸟图的实例化对象-------------------------*/
+            var bird = new Bird(ctx, imgs.bird, 20, 20);
+
+            /*----------------------创建大地背景图的实例化对象------------------------*/
+            //创建4个大地的图片对象放入到一个数组中，保证大地移动过程中无缝连接
+            var lands = [];
+            for(var i=0;i<4;i++){
+                lands.push(new Land(ctx, imgs.land, imgs.land.width * i, cvs.height - imgs.land.height));
+            }
+
+            /*----------------------创建大地背景图的实例化对象------------------------*/
+            //创建6个管子图片对象放入到数组中，保证管子移动过程中无缝连接
+            var pipes = [];
+            for(var i=0;i<6;i++){
+                pipes.push(new Pipe(ctx, imgs.pipeUp, imgs.pipeDown, 300 + imgs.pipeUp.width * 3 * i));
+            }
+
+            /*------------------------创建小鸟图的实例化对象-------------------------*/
+            var startTime = Date.now();//游戏开始时间，相当于new Date().getTime();
+            var text = new Text(ctx, startTime, startTime, cvs.width, 0, 'orange', 'right', 'top');
+
+
+            /*-----------设置定时器控制图片移动,并用一个变量记录定时器的id--------------*/
+            var timer = setInterval(function(){
+                //清除画布，避免当图片移动时残留图像留在画布上
+                ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+                /*--------------------绘制天空背景图在画布上------------------*/
+                sky.draw();
+                sky.update();//让图片动起来
+                sky2.draw();
+                sky2.update();
+
+                /*---------------------绘制管子图片在画布上--------------------*/
+                //放在大地前绘制，保证大地把下面管子盖住
+                /*
+                * 清除原来的路径，避免路径残留在画布上，让路径随着管子的移动而移动
+                * */
+                ctx.beginPath();
+                pipes.forEach(function(pipe){
+                    pipe.draw();
+                    pipe.update();
+                });
+
+                /*---------------------绘制大地背景图在画布上------------------*/
+                lands.forEach(function(land){
+                    land.draw();
+                    land.update();
+                });
+
+                /*----------------------绘制小鸟图在画布上--------------------*/
+                bird.draw();
+                bird.update();
+
+                /*---------------------小鸟满足触碰条件停止-------------------*/
+                //小鸟中心点碰到画布上边界，碰到大地，碰到管子，清除定时器让画面停下来
+                var birdCenterX = bird.x + bird.width / 2;//小鸟中心点x轴坐标
+                var birdCenterY = bird.y + bird.height / 2;//小鸟中心点y轴坐标
+                if(birdCenterY < 0 || birdCenterY > cvs.height - imgs.land.height ||
+                ctx.isPointInPath(birdCenterX, birdCenterY)){
+                    clearInterval(timer);
+                }
+
+                /*---------------------绘制文字时间在画布上--------------------*/
+                text.draw();
+                text.update();
+
+            },30);
+        });
+    </script>
+</body>
+</html>
